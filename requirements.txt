@@ -1,0 +1,6 @@
+# The following three packages are required for scikit-learn
+scikit-learn
+numpy
+scipy
+
+nltk
