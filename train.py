@@ -1,71 +1,66 @@
+import json
 import os
+import pickle
+import sys
+import time
 
 import nltk
 from sklearn import svm
 from doclearn.vectorizer import Vectorizer
 
 
-documentation = {
-    'delete': 'Removes the given file from the filesystem',
-    'open': 'Opens a file so that you can read it',
-    'log_file': 'A file containing all log information',
-    'settings_file': 'Has all the settings for the program'
-}
-code_samples = [
-    'delete(log_file)',
-    'delete(settings_file)',
-    'open(log_file)'
-]
-phrases = {
-    'deletes the log file': [0],
-    'removes the log file': [0],
-    'deletes the settings file': [1],
-    'removes the settings file': [1],
-    'deletes a file': [0,1],
-    'removes a file': [0,1],
-
-    'opens the log file': [2],
-    'opens the file containing the logs': [2],
-    'opens a file': [2],
-}
+OUTPUT_DIR = 'trained_classifiers'
+VERSION_NUMBER = '0.1'
 
 
-classifier = svm.SVC(probability=True)
+def load_samples():
+    if len(sys.argv) != 2:
+        print 'Please pass the samples filename as an argument to this script.'
+        sys.exit(1)
+
+    with open(sys.argv[1], 'r') as f:
+        return json.loads(f.read())
 
 
-def train():
-    vectorizer = Vectorizer()
+def train(classifier, samples):
+    all_vectors = []
+    all_targets = []
 
+    for sample in samples:
+        vectorizer = Vectorizer(sample['description'],
+                                sample['documentation'],
+                                sample['snippet_lines'])
+
+        for substring_indices in sample['related_lines']:
+            split_substring_indices = substring_indices.split(',')
+
+            all_vectors.extend(vectorizer.generateVectorsForDescriptionSubstring(
+                    int(split_substring_indices[0]),
+                    int(split_substring_indices[1])))
+            all_targets.extend(generate_targets(
+                    len(sample['snippet_lines']),
+                    sample['related_lines'][substring_indices]))
+
+    classifier.fit(all_vectors, all_targets)
+
+
+def generate_targets(line_count, related_lines):
     targets = []
-    for phrase, related_indices in phrases.iteritems():
-        for code_sample_index, code_sample in enumerate(code_samples):
-            vectorizer.addMeasurement(
-                    code_sample, documentation, phrase)
-            targets.append(int(code_sample_index in related_indices))
 
-    vectors_array = vectorizer.toArray()
-    classifier.fit(vectors_array, targets)
+    for i in range(line_count):
+        if i in related_lines:
+            targets.append(1)
+        else:
+            targets.append(0)
 
-
-def testSinglePoint(code, phrase, expected):
-    vectorizer = Vectorizer()
-    vectorizer.addMeasurement(code, documentation, phrase)
-    print 'Testing on (%s, %s)' % (code, phrase)
-
-    if classifier.predict(vectorizer.toArray())[0] == expected:
-        print 'PASSED'
-    else:
-        print 'FAILED'
+    return targets
 
 
-def test():
-    testSinglePoint('open(settings_file)', 'opens the settings file', 1)
-    testSinglePoint('open(log_file)', 'opens the settings file', 0)
-    testSinglePoint('open(log_file)', 'opens the log file', 1)
-    testSinglePoint('open(settings_file)', 'opens a file', 1)
-    testSinglePoint('delete(settings_file)', 'opens a file', 0)
-    testSinglePoint('delete(settings_file)', 'removes a file', 1)
-    testSinglePoint('delete(settings_file)', 'expunges a file', 1)
+def save(classifier):
+    output_filename = '%s/classifier_%s_%d' % (
+            OUTPUT_DIR, VERSION_NUMBER, time.time())
+    with open(output_filename, 'w') as f:
+        f.write(pickle.dumps(classifier))
 
 
 def main():
@@ -74,11 +69,13 @@ def main():
             os.path.dirname(os.path.abspath(__file__)), 'nltk_data')
     nltk.data.path.append(nltk_data_path)
 
-    train()
-    test()
+    samples = load_samples()
 
-    # TODO go over to test recall / precision or whatever.
-    # TODO output the weights
+    classifier = svm.SVC(probability=True)
+
+    train(classifier, samples)
+    save(classifier)
+
 
 if __name__ == '__main__':
     main()
