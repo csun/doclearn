@@ -24,7 +24,7 @@ class Vectorizer(object):
         self._snippet_lines = snippet_lines
 
         self._features_template = {
-            'verb_similarity': self._computeVerbSimilarity,
+            # 'verb_similarity': self._computeVerbSimilarity,
             'shared_keywords': self._computeSharedKeywords
         }
 
@@ -47,6 +47,7 @@ class Vectorizer(object):
 
         return features_dict
 
+    # TODO make this actually work and add back in
     def _computeVerbSimilarity(self, code, documentation, phrase):
         # This makes a lot of assumptions about the structure of docs and code
         try:
@@ -66,7 +67,7 @@ class Vectorizer(object):
 
     def _computeSharedKeywords(self, code, documentation, phrase):
         # This is not a robust regex (and I don't fully understand it)
-        code_keywords = re.split('[()_]', code)
+        code_keywords = re.split('[()_, ]', code)
         phrase_keywords = phrase.split()
 
         # This could also contain garbage like the empty string
