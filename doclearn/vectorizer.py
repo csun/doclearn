@@ -1,19 +1,8 @@
 import re
 
-import nltk
 from nltk.corpus import wordnet
 
 from sklearn.feature_extraction import DictVectorizer
-
-
-def _getVerbInPhrase(phrase):
-    tagged_tokens = nltk.pos_tag(nltk.word_tokenize(phrase))
-
-    for token, tag in tagged_tokens:
-        if tag[0] == 'V':
-            return token
-
-    return None
 
 
 class Vectorizer(object):
