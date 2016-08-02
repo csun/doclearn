@@ -10,6 +10,18 @@ class CodeParserFunctionNamesTest(unittest.TestCase):
         function_names = parser.getCalledFunctionNamesForLine(0)
         self.assertEquals('fn', function_names[0])
 
+    def test_nonexistent_line(self):
+        parser = CodeParser('fn()')
+
+        function_names = parser.getCalledFunctionNamesForLine(100)
+        self.assertEquals([], function_names)
+
+    def test_call_of_a_call(self):
+        parser = CodeParser('fn()()')
+
+        function_names = parser.getCalledFunctionNamesForLine(0)
+        self.assertEquals('fn', function_names[0])
+
     def test_attribute_function(self):
         parser = CodeParser('abc.asd.fn()')
 

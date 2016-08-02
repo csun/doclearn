@@ -13,8 +13,11 @@ class _FunctionNameLister(ast.NodeVisitor):
 
         if isinstance(node.func, ast.Attribute):
             function_name = node.func.attr
-        else:
+        elif isinstance(node.func, ast.Name):
             function_name = node.func.id
+        else:
+            self.generic_visit(node)
+            return
 
         self.line_function_names[node.lineno].append(function_name)
         self.generic_visit(node)
@@ -31,4 +34,7 @@ class CodeParser(object):
     def getCalledFunctionNamesForLine(self, line):
         # NOTE ast starts line indices at 1, while we start at 0.
         # Increment here to deal with that.
-        return self._function_name_lister.line_function_names[line + 1]
+        try:
+            return self._function_name_lister.line_function_names[line + 1]
+        except KeyError:
+            return []
