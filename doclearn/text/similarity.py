@@ -3,7 +3,7 @@ from nltk.corpus import wordnet
 
 def max_word_similarity(word1, word2):
     """
-    Return the similarity between two words.
+    Return the similarity between two lists of words.
 
     The result of this function will either be None (if no similarity found) or
     a float between 0 and 1.
