@@ -1,7 +1,3 @@
-import re
-
-from nltk.corpus import wordnet
-
 from sklearn.feature_extraction import DictVectorizer
 
 
