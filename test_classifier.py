@@ -28,9 +28,9 @@ def main():
     predicted = classifier.predict(loader.vectors)
 
     print 'Predicted %d values.' % len(predicted)
-    print 'Precision: %d' % precision_score(loader.targets, predicted)
-    print 'Recall: %d' % recall_score(loader.targets, predicted)
-    print 'F1 Score: %d' % f1_score(loader.targets, predicted)
+    print 'Precision: %f' % precision_score(loader.targets, predicted)
+    print 'Recall: %f' % recall_score(loader.targets, predicted)
+    print 'F1 Score: %f' % f1_score(loader.targets, predicted)
 
 
 if __name__ == '__main__':

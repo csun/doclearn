@@ -1,13 +1,13 @@
 import pickle
 import time
 
-from sklearn import svm
+from sklearn import naive_bayes
 
 from . import constants
 
 
 def create_classifier():
-    return svm.SVC()
+    return naive_bayes.GaussianNB()
 
 def save_classifier(classifier):
     output_filename = '%s/classifier_%s_%d' % (
