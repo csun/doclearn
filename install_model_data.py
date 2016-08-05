@@ -14,5 +14,5 @@ nltk_downloader.download(nltk_packages)
 
 
 print 'Installing spacy to path: %s' % constants.SPACY_DATA_DIR
-sputnik.install('spacy', spacy.about.__version__, 'en_default',
+sputnik.install('spacy', spacy.about.__version__, 'en',
         data_path=constants.SPACY_DATA_DIR)

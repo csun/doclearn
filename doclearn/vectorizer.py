@@ -43,30 +43,31 @@ class Vectorizer(object):
 
         features_dict['verb_function_similarity'] = (
                 self._computeVerbFunctionSimilarity())
+        features_dict['object_argument_similarity'] = (
+                self._computeObjectArgumentSimilarity())
         features_dict['naive_shared_keywords'] = (
                 self._naiveComputeSharedKeywords())
 
         return features_dict
 
+    # ==========================================================================
+    # === FEATURES =============================================================
+    # ==========================================================================
     def _computeVerbFunctionSimilarity(self):
         called_functions = self._code_parser.getCalledFunctionNamesForLine(
                 self._current_line_number)
-
-        code_words = []
-        for function_name in called_functions:
-            code_words.extend(
-                    word_extraction.identifier_to_words(function_name))
-
         phrase_verbs = self._current_phrase_parser.getVerbs()
 
-        max_similarity = 0
-        for word in code_words:
-            for verb in phrase_verbs:
-                current_similarity = similarity.max_word_similarity(word, verb)
-                if current_similarity and current_similarity > max_similarity:
-                    max_similarity = current_similarity
+        return self._getMaxSimilarityBetweenIdentifiersAndWords(
+                called_functions, phrase_verbs)
 
-        return max_similarity
+    def _computeObjectArgumentSimilarity(self):
+        argument_names = self._code_parser.getArgumentNamesForLine(
+                self._current_line_number)
+        phrase_objects = self._current_phrase_parser.getObjects()
+
+        return self._getMaxSimilarityBetweenIdentifiersAndWords(
+                argument_names, phrase_objects)
 
     def _naiveComputeSharedKeywords(self):
         # This is not a robust regex (and I don't fully understand it)
@@ -76,3 +77,22 @@ class Vectorizer(object):
         # This could also contain garbage like the empty string
         overlap = [el for el in code_keywords if el in phrase_keywords]
         return len(overlap)
+
+    # ==========================================================================
+    # === HELPERS ==============================================================
+    # ==========================================================================
+    def _getMaxSimilarityBetweenIdentifiersAndWords(self, identifiers, words):
+        identifier_words = []
+        for identifier in identifiers:
+            identifier_words.extend(
+                    word_extraction.identifier_to_words(identifier))
+
+        max_similarity = 0
+        for identifier_word in identifier_words:
+            for phrase_word in words:
+                current_similarity = similarity.max_word_similarity(
+                        identifier_word, phrase_word)
+                if current_similarity and current_similarity > max_similarity:
+                    max_similarity = current_similarity
+
+        return max_similarity

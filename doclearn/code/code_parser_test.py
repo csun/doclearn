@@ -64,3 +64,26 @@ class CodeParserFunctionNamesTest(unittest.TestCase):
 
         function_names = parser.getCalledFunctionNamesForLine(1)
         self.assertEquals('fn2', function_names[0])
+
+
+class CodeParserArgumentNames(unittest.TestCase):
+
+    def test_single_arg(self):
+        parser = CodeParser('fn(a)')
+
+        function_names = parser.getArgumentNamesForLine(0)
+        self.assertEquals('a', function_names[0])
+
+    def test_multiple_args(self):
+        parser = CodeParser('fn(a, b)')
+
+        function_names = parser.getArgumentNamesForLine(0)
+        self.assertIn('a', function_names)
+        self.assertIn('b', function_names)
+
+    def test_nested_args(self):
+        parser = CodeParser('fn(a, fn2(b))')
+
+        function_names = parser.getArgumentNamesForLine(0)
+        self.assertIn('a', function_names)
+        self.assertIn('b', function_names)
