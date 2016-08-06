@@ -66,7 +66,7 @@ class CodeParserFunctionNamesTest(unittest.TestCase):
         self.assertEquals('fn2', function_names[0])
 
 
-class CodeParserArgumentNames(unittest.TestCase):
+class CodeParserArgumentNamesTest(unittest.TestCase):
 
     def test_single_arg(self):
         parser = CodeParser('fn(a)')
@@ -87,3 +87,34 @@ class CodeParserArgumentNames(unittest.TestCase):
         function_names = parser.getArgumentNamesForLine(0)
         self.assertIn('a', function_names)
         self.assertIn('b', function_names)
+
+
+class CodeParserDocumentationTest(unittest.TestCase):
+
+    def test_single_function(self):
+        parser = CodeParser('fn()', documentation={'fn': 'A function'})
+
+        documentation = parser.getFunctionDocstringsForLine(0)
+        self.assertEquals(['A function'], documentation)
+
+    def test_multiple_functions(self):
+        parser = CodeParser(
+                'fn(fn2())',
+                documentation={'fn': 'A function', 'fn2': 'Another'})
+
+        documentation = parser.getFunctionDocstringsForLine(0)
+        self.assertEquals(['A function', 'Another'], documentation)
+
+    def test_attribute_functions(self):
+        parser = CodeParser(
+                'a.b.fn(c.d.fn2())',
+                documentation={'a.b.fn': 'A function', 'd.fn2': 'Another'})
+
+        documentation = parser.getFunctionDocstringsForLine(0)
+        self.assertEquals(['A function', 'Another'], documentation)
+
+    def test_nonexistent_docstring(self):
+        parser = CodeParser('a.b.fn()')
+
+        documentation = parser.getFunctionDocstringsForLine(0)
+        self.assertEquals([], documentation)
