@@ -1,7 +1,7 @@
 from nltk.corpus import wordnet
 
 
-def max_word_similarity(word1, word2):
+def word_similarity(word1, word2):
     """
     Return the similarity between two lists of words.
 
