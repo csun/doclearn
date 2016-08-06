@@ -14,7 +14,8 @@ class Vectorizer(object):
         self._documentation = documentation
         self._snippet_lines = snippet_lines
 
-        self._code_parser = code_parser.CodeParser(''.join(snippet_lines))
+        self._code_parser = code_parser.CodeParser(
+                ''.join(snippet_lines), documentation=self._documentation)
 
         self._current_features_dict = {}
         self._current_line_number = 0
