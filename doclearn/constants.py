@@ -10,6 +10,7 @@ def _absolute_path_from_relative(rel_path):
 
 VERSION_NUMBER = '0.1'
 
+TEST_DATA_DIR = _absolute_path_from_relative('test_data')
 CLASSIFIER_DIR = _absolute_path_from_relative('model_data/trained')
 NLTK_DATA_DIR = _absolute_path_from_relative('model_data/nltk')
 SPACY_DATA_DIR = _absolute_path_from_relative('model_data/spacy')

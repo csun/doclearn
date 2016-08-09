@@ -1,11 +1,25 @@
-import sys
+import json
 import os
+import pickle
+import sys
 
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 from doclearn import learning
 from doclearn import constants
 from doclearn.loader import Loader
+
+
+def save_test_data(filename, loader, predicted):
+    test_data = {
+        'predicted': predicted,
+        'targets': loader.targets,
+        'vectors': loader.vectors,
+        'feature_names': loader.feature_names
+    }
+    filename = constants.TEST_DATA_DIR + '/' + filename
+    with open(filename, 'w') as f:
+        f.write(pickle.dumps(test_data))
 
 
 def main():
@@ -26,6 +40,7 @@ def main():
     classifier = learning.load_classifier(classifier_name)
 
     predicted = classifier.predict(loader.vectors)
+    save_test_data(classifier_name.split('/')[-1], loader, predicted)
 
     print 'Predicted %d values.' % len(predicted)
     print 'Precision: %f' % precision_score(loader.targets, predicted)

@@ -13,6 +13,7 @@ class Loader(object):
         with open(filename, 'r') as f:
             self._samples = json.loads(f.read())
 
+        self.feature_names = []
         self.vectors = []
         self.targets = []
         self._processSamples()
@@ -30,6 +31,9 @@ class Loader(object):
                         int(split_substring_indices[0]),
                         int(split_substring_indices[1])))
                 self._generateTargets(sample, substring_indices)
+
+            # NOTE in theory, these should be the same for all vectorizers created.
+            self.feature_names = vectorizer.feature_names
 
     def _generateTargets(self, sample, substring_indices):
         line_count = len(sample['snippet_lines'])

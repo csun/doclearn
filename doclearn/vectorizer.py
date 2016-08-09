@@ -10,6 +10,8 @@ from .text import phrase_parser
 class Vectorizer(object):
 
     def __init__(self, description, documentation, snippet_lines):
+        self.feature_names = []
+
         self._description = description
         self._documentation = documentation
         self._snippet_lines = snippet_lines
@@ -41,7 +43,10 @@ class Vectorizer(object):
             all_feature_dicts.append(self._current_features_dict)
 
         dict_vectorizer = DictVectorizer()
-        return dict_vectorizer.fit_transform(all_feature_dicts).toarray()
+        vectors = dict_vectorizer.fit_transform(all_feature_dicts).toarray()
+        self.feature_names = dict_vectorizer.get_feature_names()
+
+        return vectors
 
     def _generateFeaturesDict(self):
         self._current_features_dict = {}
