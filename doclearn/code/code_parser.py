@@ -1,11 +1,72 @@
 import ast
 
+from doclearn.node import Node
+
 
 def _getOrDefaultToArray(dictionary, key):
     try:
         return dictionary[key]
     except KeyError:
         return []
+
+
+def _getLabelAndRelatedTokensForLeaf(leaf):
+    if isinstance(leaf, ast.Attribute):
+        return (leaf.attr, _getTokensFromAttributeChain(leaf.value))
+    elif isinstance(leaf, ast.Name):
+        return (leaf.id, [])
+    elif isinstance(leaf, ast.Str):
+        return (leaf.s, [])
+    elif isinstance(leaf, ast.Num):
+        return (str(leaf.n), [])
+    else:
+        return (None, [])
+
+
+def _getTokensFromAttributeChain(node):
+    if isinstance(node, ast.Name):
+        return [node.id]
+    else:
+        tokens = _getTokensFromAttributeChain(node.value)
+        tokens.append(node.attr)
+        return tokens
+
+
+class _TreeVisitor(ast.NodeVisitor):
+    def __init__(self):
+        super(_TreeVisitor, self).__init__()
+
+        self._current_parent_node = None
+        self.line_root_nodes = {}
+
+
+    def visit_Call(self, ast_node):
+        label, related_tokens = _getLabelAndRelatedTokensForLeaf(ast_node.func)
+        new_node = Node(label, Node.VERB_NODE, related_tokens=related_tokens)
+
+        if self._current_parent_node is None:
+            self.line_root_nodes[ast_node.lineno - 1] = new_node
+        else:
+            self._current_parent_node.addChild(new_node)
+
+        prev_parent_node = self._current_parent_node
+        self._current_parent_node = new_node
+
+        for arg in ast_node.args:
+            self._addChildIfArgIsLeaf(arg)
+
+        self.generic_visit(ast_node)
+
+        self._current_parent_node = prev_parent_node
+
+    def _addChildIfArgIsLeaf(self, arg):
+        label, related_tokens = _getLabelAndRelatedTokensForLeaf(arg)
+
+        if label is None:
+            return
+        else:
+            new_node = Node(label, Node.NOUN_NODE, related_tokens=related_tokens)
+            self._current_parent_node.addChild(new_node)
 
 
 class _Visitor(ast.NodeVisitor):
@@ -86,12 +147,16 @@ class CodeParser(object):
     def __init__(self, source_string, documentation=None):
         self._root_node = ast.parse(source_string)
 
+        # TODO dictionary of line number to nodes? Should be in relevant visitor.
+
         self._documentation = {}
         if documentation:
             self._documentation = documentation
 
         self._visitor = _Visitor(self._documentation)
+        self._tree_visitor = _TreeVisitor()
         self._visitor.visit(self._root_node)
+        self._tree_visitor.visit(self._root_node)
 
     def getCalledFunctionNamesForLine(self, line):
         return _getOrDefaultToArray(self._visitor.line_function_names, line)
@@ -101,3 +166,9 @@ class CodeParser(object):
 
     def getFunctionDocstringsForLine(self, line):
         return _getOrDefaultToArray(self._visitor.line_function_docstrings, line)
+
+    def getRootNodeForLine(self, line):
+        if line in self._tree_visitor.line_root_nodes:
+            return self._tree_visitor.line_root_nodes[line]
+        else:
+            return None

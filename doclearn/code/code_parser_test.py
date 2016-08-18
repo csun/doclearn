@@ -1,6 +1,7 @@
 import unittest
 
 from .code_parser import CodeParser
+from doclearn.node import Node
 
 class CodeParserFunctionNamesTest(unittest.TestCase):
 
@@ -118,3 +119,32 @@ class CodeParserDocumentationTest(unittest.TestCase):
 
         documentation = parser.getFunctionDocstringsForLine(0)
         self.assertEquals([], documentation)
+
+
+class CodeParserTreeTest(unittest.TestCase):
+
+    def test_simple_function_parse(self):
+        parser = CodeParser('a.b.fn()')
+        node = parser.getRootNodeForLine(0)
+        self.assertEquals(node.label, 'fn')
+        self.assertIn('a', node.related_tokens)
+        self.assertIn('b', node.related_tokens)
+        self.assertEquals(node.node_type, Node.VERB_NODE)
+        self.assertEquals(node.children, [])
+
+    def test_function_args_parse(self):
+        parser = CodeParser('fn("a", b)')
+        node = parser.getRootNodeForLine(0)
+        self.assertEquals(len(node.children), 2)
+
+        for child in node.children:
+            self.assertTrue(child.label == 'a' or child.label == 'b')
+            self.assertEquals(child.node_type, Node.NOUN_NODE)
+
+    def test_nested_function_parse(self):
+        parser = CodeParser('fn(fn2())')
+        node = parser.getRootNodeForLine(0)
+
+        self.assertEquals(len(node.children), 1)
+        self.assertEquals(node.children[0].node_type, Node.VERB_NODE)
+        self.assertEquals(node.children[0].label, 'fn2')
