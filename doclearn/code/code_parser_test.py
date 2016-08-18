@@ -148,3 +148,48 @@ class CodeParserTreeTest(unittest.TestCase):
         self.assertEquals(len(node.children), 1)
         self.assertEquals(node.children[0].node_type, Node.VERB_NODE)
         self.assertEquals(node.children[0].label, 'fn2')
+
+    def test_parse_with_comment(self):
+        parser = CodeParser('# hi\na.b.fn()')
+        self.assertEquals(parser.getRootNodeForLine(0), None)
+        self.assertNotEquals(parser.getRootNodeForLine(1), None)
+
+    def test_return_call(self):
+        parser = CodeParser('return fn()')
+
+        node = parser.getRootNodeForLine(0)
+        self.assertEquals(node.label, 'return')
+        self.assertEquals(node.node_type, Node.VERB_NODE)
+
+        fn_node = node.children[0]
+        self.assertEquals(fn_node.label, 'fn')
+
+    def test_return_identifier(self):
+        parser = CodeParser('return a.b')
+
+        node = parser.getRootNodeForLine(0)
+        child_node = node.children[0]
+        self.assertEquals(child_node.label, 'b')
+
+    def test_nested_op(self):
+        parser = CodeParser('fn(a + b)')
+
+        node = parser.getRootNodeForLine(0)
+        add_node = node.children[0]
+        self.assertEquals(add_node.label, 'add')
+        self.assertEquals(len(add_node.children), 2)
+
+        for child in add_node.children:
+            self.assertTrue(child.label == 'a' or child.label == 'b')
+            self.assertEquals(child.node_type, Node.NOUN_NODE)
+
+    def test_subscript(self):
+        parser = CodeParser('a.b[c]')
+
+        node = parser.getRootNodeForLine(0)
+        self.assertEquals(node.label, 'b')
+        self.assertEquals(node.related_tokens, ['a'])
+        self.assertEquals(node.node_type, Node.NOUN_NODE)
+
+        self.assertEquals(node.children[0].label, 'c')
+        self.assertEquals(node.children[0].node_type, Node.NOUN_NODE)

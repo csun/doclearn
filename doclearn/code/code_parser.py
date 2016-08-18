@@ -19,6 +19,22 @@ def _getLabelAndRelatedTokensForLeaf(leaf):
         return (leaf.s, [])
     elif isinstance(leaf, ast.Num):
         return (str(leaf.n), [])
+    elif isinstance(leaf, ast.Not):
+        return ('not', ['opposite', 'inverse'])
+    elif isinstance(leaf, ast.Add):
+        return ('add', ['increase', 'plus'])
+    elif isinstance(leaf, ast.Sub):
+        return ('subtract', ['decrease', 'minus'])
+    elif isinstance(leaf, ast.Mult):
+        return ('multiply', ['times'])
+    elif isinstance(leaf, ast.Div):
+        return ('divide', [])
+    elif isinstance(leaf, ast.Mod):
+        return ('modulus', ['remainder'])
+    elif isinstance(leaf, ast.And):
+        return ('and', [])
+    elif isinstance(leaf, ast.Or):
+        return ('or', [])
     else:
         return (None, [])
 
@@ -39,10 +55,75 @@ class _TreeVisitor(ast.NodeVisitor):
         self._current_parent_node = None
         self.line_root_nodes = {}
 
-
     def visit_Call(self, ast_node):
-        label, related_tokens = _getLabelAndRelatedTokensForLeaf(ast_node.func)
-        new_node = Node(label, Node.VERB_NODE, related_tokens=related_tokens)
+        self._processNodeWithLabelLeaf(ast_node.func, ast_node, ast_node.args)
+
+    def visit_UnaryOp(self, ast_node):
+        self._processOp(ast_node, [ast_node.operand])
+
+    def visit_BinOp(self, ast_node):
+        self._processOp(ast_node, [ast_node.left, ast_node.right])
+
+    def visit_BoolOp(self, ast_node):
+        self._processOp(ast_node, ast_node.values)
+
+    def visit_Compare(self, ast_node):
+        # NOTE This doesn't properly handle comparisons with multiple different
+        # operators, but that's too much work.
+        potential_leaves = ast_node.comparators[:]
+        potential_leaves.append(ast_node.left)
+        self._processNodeWithLabelLeaf(ast_node.ops[0], ast_node, potential_leaves)
+
+    def visit_Subscript(self, ast_node):
+        if isinstance(ast_node.slice, ast.Index):
+            potential_leaves = [ast_node.slice.value]
+        else:
+            return
+
+        self._processNodeWithLabelLeaf(ast_node.value, ast_node, potential_leaves,
+                                       node_type = Node.NOUN_NODE)
+
+    def visit_Assign(self, ast_node):
+        potential_leaves = ast_node.targets
+        potential_leaves.append(ast_node.value)
+        self._processNode('set', ['assign'], Node.VERB_NODE, ast_node, potential_leaves)
+
+    def visit_AugAssign(self, ast_node):
+        if isinstance(ast_node.op, ast.Add):
+            label, related_tokens = ('increment', ['increase'])
+        elif isinstance(ast_node.op, ast.Sub):
+            label, related_tokens = ('decrement', ['decrease'])
+        else:
+            label, related_tokens = ('set', ['assign'])
+
+        self._processNode(label, related_tokens, Node.VERB_NODE, ast_node,
+                          [ast_node.target, ast_node.value])
+
+    def visit_Raise(self, ast_node):
+        self._processNode('raise', ['throw'], Node.VERB_NODE, ast_node,
+                          [ast_node.exc])
+
+    def visit_Delete(self, ast_node):
+        self._processNode('delete', ['remove'], Node.VERB_NODE, ast_node,
+                          ast_node.targets)
+
+    def visit_Return(self, ast_node):
+        self._processNode('return', [], Node.VERB_NODE, ast_node,
+                          [ast_node.value])
+
+    def _processOp(self, op_node, potential_leaves):
+        self._processNodeWithLabelLeaf(op_node.op, op_node, potential_leaves)
+
+    def _processNodeWithLabelLeaf(self, label_leaf, ast_node, potential_leaves, node_type=Node.VERB_NODE):
+        label, related_tokens = _getLabelAndRelatedTokensForLeaf(label_leaf)
+
+        if label is None:
+            return
+
+        self._processNode(label, related_tokens, node_type, ast_node, potential_leaves)
+
+    def _processNode(self, label, related_tokens, node_type, ast_node, potential_leaves):
+        new_node = Node(label, node_type, related_tokens=related_tokens)
 
         if self._current_parent_node is None:
             self.line_root_nodes[ast_node.lineno - 1] = new_node
@@ -52,15 +133,15 @@ class _TreeVisitor(ast.NodeVisitor):
         prev_parent_node = self._current_parent_node
         self._current_parent_node = new_node
 
-        for arg in ast_node.args:
-            self._addChildIfArgIsLeaf(arg)
-
+        if potential_leaves:
+            for potential in potential_leaves:
+                self._addChildIfLeaf(potential)
         self.generic_visit(ast_node)
 
         self._current_parent_node = prev_parent_node
 
-    def _addChildIfArgIsLeaf(self, arg):
-        label, related_tokens = _getLabelAndRelatedTokensForLeaf(arg)
+    def _addChildIfLeaf(self, node):
+        label, related_tokens = _getLabelAndRelatedTokensForLeaf(node)
 
         if label is None:
             return
