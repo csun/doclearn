@@ -27,6 +27,8 @@ def _getLabelAndRelatedTokensForLeaf(leaf):
         return (words[0], words[1:])
     elif isinstance(leaf, ast.Str):
         words = identifier_to_words(leaf.s)
+        if not words:
+            words = ['empty']
         return (words[0], words[1:])
     elif isinstance(leaf, ast.Num):
         return (str(leaf.n), [])
@@ -53,10 +55,12 @@ def _getLabelAndRelatedTokensForLeaf(leaf):
 def _getTokensFromAttributeChain(node):
     if isinstance(node, ast.Name):
         return [node.id]
-    else:
+    elif isinstance(node, ast.Attribute):
         tokens = _getTokensFromAttributeChain(node.value)
         tokens.append(node.attr)
         return tokens
+    else:
+        return []
 
 
 class _TreeVisitor(ast.NodeVisitor):
@@ -113,7 +117,7 @@ class _TreeVisitor(ast.NodeVisitor):
 
     def visit_Raise(self, ast_node):
         self._processNode('raise', ['throw'], Node.VERB_NODE, ast_node,
-                          [ast_node.exc])
+                          [ast_node.type])
 
     def visit_Delete(self, ast_node):
         self._processNode('delete', ['remove'], Node.VERB_NODE, ast_node,

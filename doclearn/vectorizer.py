@@ -5,6 +5,7 @@ from sklearn.feature_extraction import DictVectorizer
 from . import utils
 from .code import code_parser
 from .text import phrase_parser
+from doclearn import tree_comparer
 
 
 class Vectorizer(object):
@@ -53,12 +54,28 @@ class Vectorizer(object):
 
         self._computeVerbFunctionSimilarity()
         self._computeObjectArgumentSimilarity()
-        self._computeFunctionDocstringSimilarity()
+        # self._computeFunctionDocstringSimilarity()
         self._naiveComputeSharedKeywords()
+        self._computeTreeCompare()
 
     # ==========================================================================
     # === FEATURES =============================================================
     # ==========================================================================
+    def _computeTreeCompare(self):
+        phrase_tree = self._current_phrase_parser.tree
+        code_tree = self._code_parser.getRootNodeForLine(self._current_line_number)
+        if not code_tree:
+            self._current_features_dict['tree_child'] = 0
+            self._current_features_dict['tree_parent'] = 0
+            self._current_features_dict['tree_grandchild'] = 0
+        else:
+            comparer = tree_comparer.TreeComparer(phrase_tree, code_tree)
+            child, parent, grandchild = comparer.getAllSimilarityCounts()
+
+            self._current_features_dict['tree_child'] = child
+            self._current_features_dict['tree_parent'] = parent
+            self._current_features_dict['tree_grandchild'] = grandchild
+
     def _computeVerbFunctionSimilarity(self):
         called_functions = self._code_parser.getCalledFunctionNamesForLine(
                 self._current_line_number)

@@ -19,3 +19,10 @@ class TreeComparerTest(unittest.TestCase):
 
         comparer = tree_comparer.TreeComparer(phrase_tree, code_tree)
         self.assertEquals(comparer.getParentChildStrongSimilarities(), 0)
+
+    def test_real_example(self):
+        phrase_tree = phrase_parser.PhraseParser('Read up to `amt` bytes off the pipeline.').tree
+        code_tree = code_parser.CodeParser('data = self.current.read(amt - len(out))').getRootNodeForLine(0)
+
+        comparer = tree_comparer.TreeComparer(phrase_tree, code_tree)
+        self.assertGreater(comparer.getParentChildStrongSimilarities(), .75)

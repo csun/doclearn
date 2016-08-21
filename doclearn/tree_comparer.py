@@ -17,13 +17,11 @@ def _convert_tree(tree, parent=None):
     return compare_node
 
 
-def _get_all_nodes_of_type(node, node_type):
-    matches = []
-    for child in node.children:
-        matches.extend(_get_all_nodes_of_type(child, node_type))
+def _get_all_nodes(node):
+    matches = [node]
 
-    if node.node_type == node_type:
-        matches.append(node)
+    for child in node.children:
+        matches.extend(_get_all_nodes(child))
 
     return matches
 
@@ -45,7 +43,7 @@ def _get_max_node_similarity(n1, n2):
     return current_max
 
 
-STRONG_SIMILARITY_THRESHOLD = 0.22
+STRONG_SIMILARITY_THRESHOLD = 0.2
 def _has_strong_child_similarity(node):
     for similarity, other_node in node.similar_nodes:
         if similarity > STRONG_SIMILARITY_THRESHOLD:
@@ -54,6 +52,31 @@ def _has_strong_child_similarity(node):
                     if (child_similarity > STRONG_SIMILARITY_THRESHOLD and
                         child_other.node_id.startswith(node.node_id)):
                         return True
+
+    return False
+
+def _has_strong_child_parent_similarity(node):
+    for similarity, other_node in node.similar_nodes:
+        if similarity > STRONG_SIMILARITY_THRESHOLD:
+            if not other_node.parent:
+                return False
+
+            for parent_sim, parent_other in other_node.parent.similar_nodes:
+                if (parent_sim > STRONG_SIMILARITY_THRESHOLD and
+                    parent_other.node_id.startswith(node.node_id)):
+                    return True
+
+    return False
+
+def _has_strong_grandchild_similarity(node):
+    for similarity, other_node in node.similar_nodes:
+        if similarity > STRONG_SIMILARITY_THRESHOLD:
+            for child in other_node.children:
+                for gchild in child.children:
+                    for gchild_similarity, gchild_other in gchild.similar_nodes:
+                        if (gchild_similarity > STRONG_SIMILARITY_THRESHOLD and
+                            gchild_other.node_id.startswith(node.node_id)):
+                            return True
 
     return False
 
@@ -66,11 +89,16 @@ class _CompareNode(object):
         self.label = original_node.label
         self.related_tokens = original_node.related_tokens
 
+        self.parent = None
         self.similar_nodes = []
         self.children = []
+        self.grandchildren = []
 
     def addChild(self, child):
+        child.parent = self
         self.children.append(child)
+        if self.parent:
+            self.parent.grandchildren.append(child)
 
 
 class TreeComparer(object):
@@ -78,8 +106,7 @@ class TreeComparer(object):
     def __init__(self, phrase_tree, code_tree):
         self._converted_phrase_tree = _convert_tree(phrase_tree)
         self._converted_code_tree = _convert_tree(code_tree)
-        self._code_nouns = _get_all_nodes_of_type(self._converted_code_tree, Node.NOUN_NODE)
-        self._code_verbs = _get_all_nodes_of_type(self._converted_code_tree, Node.VERB_NODE)
+        self._code_nodes = _get_all_nodes(self._converted_code_tree)
 
         self.total_phrase_parents = 0
 
@@ -97,10 +124,7 @@ class TreeComparer(object):
             if node.children:
                 self.total_phrase_parents += 1
 
-            if node.node_type == Node.NOUN_NODE:
-                targets = self._code_nouns
-            else:
-                targets = self._code_verbs
+            targets = self._code_nodes
 
             for target in targets:
                 similarity = _get_max_node_similarity(node, target)
@@ -108,6 +132,9 @@ class TreeComparer(object):
                 target.similar_nodes.append((similarity, node))
 
     def getParentChildStrongSimilarities(self):
+        if self.total_phrase_parents == 0:
+            return 0
+
         unvisited = [self._converted_phrase_tree]
 
         found = 0.0
@@ -118,3 +145,23 @@ class TreeComparer(object):
             unvisited.extend(node.children)
 
         return found / self.total_phrase_parents
+
+    def getAllSimilarityCounts(self):
+        unvisited = [self._converted_phrase_tree]
+
+        found_child = 0
+        found_parent = 0
+        found_grandchild = 0
+
+        while unvisited:
+            node = unvisited.pop()
+            if _has_strong_child_similarity(node):
+                found_child += 1
+            if _has_strong_child_parent_similarity(node):
+                found_parent += 1
+            if _has_strong_grandchild_similarity(node):
+                found_grandchild += 1
+
+            unvisited.extend(node.children)
+
+        return (found_child, found_parent, found_grandchild)

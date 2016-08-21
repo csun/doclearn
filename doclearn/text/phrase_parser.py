@@ -13,7 +13,9 @@ def _generateNodeForToken(token, parent):
         node_type = Node.NOUN_NODE
 
     node = Node(token, node_type)
-    for child in token.children:
+    unvisited = list(token.children)
+    while unvisited:
+        child = unvisited.pop()
         if (child.pos == parts_of_speech.VERB or
             child.dep in [symbols.nsubj, symbols.dobj, symbols.iobj, symbols.pobj, symbols.poss]):
             _generateNodeForToken(child, node)
@@ -23,6 +25,8 @@ def _generateNodeForToken(token, parent):
             # NOTE if these things are joined by a conjunction, they should
             # be siblings
             _generateNodeForToken(child, parent)
+        else:
+            unvisited.extend(child.children)
 
     parent.addChild(node)
 
