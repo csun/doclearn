@@ -1,6 +1,8 @@
 import ast
 
+from doclearn.code.word_extraction import identifier_to_words
 from doclearn.node import Node
+from doclearn.text.phrase_parser import PhraseParser
 
 
 def _getOrDefaultToArray(dictionary, key):
@@ -12,11 +14,20 @@ def _getOrDefaultToArray(dictionary, key):
 
 def _getLabelAndRelatedTokensForLeaf(leaf):
     if isinstance(leaf, ast.Attribute):
-        return (leaf.attr, _getTokensFromAttributeChain(leaf.value))
+        attr_tokens = _getTokensFromAttributeChain(leaf.value)
+        related_tokens = []
+        for token in attr_tokens:
+            related_tokens.extend(identifier_to_words(token))
+
+        words = identifier_to_words(leaf.attr)
+        related_tokens.extend(words[1:])
+        return (words[0], related_tokens)
     elif isinstance(leaf, ast.Name):
-        return (leaf.id, [])
+        words = identifier_to_words(leaf.id)
+        return (words[0], words[1:])
     elif isinstance(leaf, ast.Str):
-        return (leaf.s, [])
+        words = identifier_to_words(leaf.s)
+        return (words[0], words[1:])
     elif isinstance(leaf, ast.Num):
         return (str(leaf.n), [])
     elif isinstance(leaf, ast.Not):
@@ -52,6 +63,7 @@ class _TreeVisitor(ast.NodeVisitor):
     def __init__(self):
         super(_TreeVisitor, self).__init__()
 
+        self._nlp = PhraseParser.get_spacy()
         self._current_parent_node = None
         self.line_root_nodes = {}
 
@@ -123,6 +135,8 @@ class _TreeVisitor(ast.NodeVisitor):
         self._processNode(label, related_tokens, node_type, ast_node, potential_leaves)
 
     def _processNode(self, label, related_tokens, node_type, ast_node, potential_leaves):
+        label = self._nlp(unicode(label))[0]
+        related_tokens = map(lambda x: self._nlp(unicode(x))[0], related_tokens)
         new_node = Node(label, node_type, related_tokens=related_tokens)
 
         if self._current_parent_node is None:
@@ -146,6 +160,9 @@ class _TreeVisitor(ast.NodeVisitor):
         if label is None:
             return
         else:
+            label = self._nlp(unicode(label))[0]
+            related_tokens = map(lambda x: self._nlp(unicode(x))[0], related_tokens)
+
             new_node = Node(label, Node.NOUN_NODE, related_tokens=related_tokens)
             self._current_parent_node.addChild(new_node)
 

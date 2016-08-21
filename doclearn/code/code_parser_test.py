@@ -126,9 +126,11 @@ class CodeParserTreeTest(unittest.TestCase):
     def test_simple_function_parse(self):
         parser = CodeParser('a.b.fn()')
         node = parser.getRootNodeForLine(0)
-        self.assertEquals(node.label, 'fn')
-        self.assertIn('a', node.related_tokens)
-        self.assertIn('b', node.related_tokens)
+        self.assertEquals(node.label.lower_, 'fn')
+
+        for token in node.related_tokens:
+            self.assertTrue(token.lower_ == 'a' or token.lower_ == 'b')
+
         self.assertEquals(node.node_type, Node.VERB_NODE)
         self.assertEquals(node.children, [])
 
@@ -138,7 +140,7 @@ class CodeParserTreeTest(unittest.TestCase):
         self.assertEquals(len(node.children), 2)
 
         for child in node.children:
-            self.assertTrue(child.label == 'a' or child.label == 'b')
+            self.assertTrue(child.label.lower_ == 'a' or child.label.lower_ == 'b')
             self.assertEquals(child.node_type, Node.NOUN_NODE)
 
     def test_nested_function_parse(self):
@@ -147,7 +149,7 @@ class CodeParserTreeTest(unittest.TestCase):
 
         self.assertEquals(len(node.children), 1)
         self.assertEquals(node.children[0].node_type, Node.VERB_NODE)
-        self.assertEquals(node.children[0].label, 'fn2')
+        self.assertEquals(node.children[0].label.lower_, 'fn2')
 
     def test_parse_with_comment(self):
         parser = CodeParser('# hi\na.b.fn()')
@@ -158,38 +160,38 @@ class CodeParserTreeTest(unittest.TestCase):
         parser = CodeParser('return fn()')
 
         node = parser.getRootNodeForLine(0)
-        self.assertEquals(node.label, 'return')
+        self.assertEquals(node.label.lower_, 'return')
         self.assertEquals(node.node_type, Node.VERB_NODE)
 
         fn_node = node.children[0]
-        self.assertEquals(fn_node.label, 'fn')
+        self.assertEquals(fn_node.label.lower_, 'fn')
 
     def test_return_identifier(self):
         parser = CodeParser('return a.b')
 
         node = parser.getRootNodeForLine(0)
         child_node = node.children[0]
-        self.assertEquals(child_node.label, 'b')
+        self.assertEquals(child_node.label.lower_, 'b')
 
     def test_nested_op(self):
         parser = CodeParser('fn(a + b)')
 
         node = parser.getRootNodeForLine(0)
         add_node = node.children[0]
-        self.assertEquals(add_node.label, 'add')
+        self.assertEquals(add_node.label.lower_, 'add')
         self.assertEquals(len(add_node.children), 2)
 
         for child in add_node.children:
-            self.assertTrue(child.label == 'a' or child.label == 'b')
+            self.assertTrue(child.label.lower_ == 'a' or child.label.lower_ == 'b')
             self.assertEquals(child.node_type, Node.NOUN_NODE)
 
     def test_subscript(self):
         parser = CodeParser('a.b[c]')
 
         node = parser.getRootNodeForLine(0)
-        self.assertEquals(node.label, 'b')
-        self.assertEquals(node.related_tokens, ['a'])
+        self.assertEquals(node.label.lower_, 'b')
+        self.assertEquals(node.related_tokens[0].lower_, 'a')
         self.assertEquals(node.node_type, Node.NOUN_NODE)
 
-        self.assertEquals(node.children[0].label, 'c')
+        self.assertEquals(node.children[0].label.lower_, 'c')
         self.assertEquals(node.children[0].node_type, Node.NOUN_NODE)
